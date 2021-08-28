@@ -1,0 +1,330 @@
+require("dotenv").config();
+const express= require("express");
+const mongoose = require("mongoose");
+
+const Book = require("./schema/book");
+const Author = require("./schema/author");
+const Publication = require("./schema/publication");
+
+const Database=require("./database");
+
+mongoose.connect(process.env.MONGO_URI).then(()=> console.log("connection established!")).catch((err) => {console.log(err)});
+
+const OurAPP=express();
+OurAPP.use(express.json());
+
+OurAPP.get("/",(request,response)=>{
+response.json({message:"server is working!!"});
+});
+
+OurAPP.get("/book",(req,res)=>{
+    return res.json({books: Database.Book});
+});
+
+OurAPP.get("/book/:bookID",(req,res)=>{
+    const getBook = Database.Book.filter(
+        (book)=> book.ISBN===req.params.bookID
+        );
+     return res.json({book: getBook});   
+});
+
+OurAPP.get("/book/c/:category",(req,res)=>{
+    const getBook = Database.Book.filter((book)=>
+        book.category.includes(req.params.category)
+    );
+     return res.json({book: getBook});   
+});
+
+OurAPP.get("/book/a/:authors",(req,res)=>{
+    const getBook = Database.Book.filter((book)=>
+        book.authors.includes(parseInt(req.params.authors))
+    );
+     return res.json({book: getBook});   
+});
+
+OurAPP.get("/author",(req,res)=>{
+    return res.json({authors: Database.Author});
+});
+
+OurAPP.get("/author/:authorname",(req,res)=>{
+    const getAuthor = Database.Author.filter(
+        (author)=> author.name===req.params.authorname
+        );
+     return res.json({author: getAuthor});   
+});
+
+OurAPP.get("/author/b/:BookName",(req,res)=>{
+    const getAuthor = Database.Author.filter(
+        (author)=> author.books.includes(req.params.BookName)
+        );
+     return res.json({author: getAuthor});   
+});
+
+OurAPP.get("/publication",(req,res)=>{
+    return res.json({publications: Database.Publication});
+});
+
+OurAPP.get("/publication/:PublicationName",(req,res)=>{
+    const getPublication = Database.Publication.filter(
+        (publication)=> publication.name===req.params.PublicationName
+        );
+     return res.json({Publications: getPublication});   
+});
+
+OurAPP.get("/publication/p/:BookName",(req,res)=>{
+    const getPublication = Database.Publication.filter((publication)=>
+    publication.books.includes(req.params.BookName)
+    );
+     return res.json({Publications: getPublication});   
+});
+
+/*OurAPP.post("/book/new",(req,res)=>{
+    console.log(req.body);
+    return res.json({message: "book added successfuly"});
+});*/
+
+OurAPP.post("/book/new",(req,res)=>{
+    const {newBook}= req.body;
+    Database.Book.push(newBook);
+    return res.json(Database.Book);
+});
+
+// OurAPP.post("/author/new",(req,res)=>{
+//     const {newAuthor} = req.body;
+//     console.log(newAuthor);
+//     return res.json({message:"author is added!!"});
+// });
+
+OurAPP.post("/author/new",(req,res)=>{
+    const {newAuthor} = req.body;
+    Database.Author.push(newAuthor);
+    return res.json(Database.Author);
+});
+
+// OurAPP.post("/publication/new",(req,res)=>{
+//     const {newPublication} = req.body;
+//     console.log(newPublication);
+//     return res.json({message:"Publication added successfully"});
+// });
+
+OurAPP.post("/publication/new",(req,res)=>{
+    const {newPublication} = req.body;
+    Database.publication.push(newPublication);
+    return res.json(Database.publication);
+});
+
+OurAPP.put("/book/update/:isbn",(req,res)=>{
+    const {updatedBook} = req.body;
+    const {isbn} = req.params;
+    const book = Database.Book.map((book)=>{
+        if(book.ISBN === isbn){
+            return {...book,...updatedBook};
+        }
+        return book;
+    }); 
+    return res.json(book);
+});
+
+OurAPP.put("/book/updateTitle/:isbn",(req,res)=>{
+    const {updatedBook} = req.body;
+    const {isbn} = req.params;
+    Database.Book.forEach((book)=>{
+        if(book.ISBN === isbn){
+            book.title = updatedBook.title;
+            return book;
+        }
+        return book;
+    });
+    return res.json(Database.Book);
+});
+
+OurAPP.put("/book/updateAuthor/:isbn",(req,res)=>{
+    const {newAuthor} = req.body;
+    const {isbn} = req.params;
+    const book = Database.Book.forEach((book)=>{
+        if(book.ISBN === isbn){
+            if(!book.authors.includes(newAuthor)){
+                book.authors.push(newAuthor);
+                return book;
+            }
+            return book;
+        }
+        return book;
+    }); 
+    
+    const author= Database.Author.forEach((author)=>{
+        if(author.id === newAuthor){
+            if(!author.books.includes(isbn)){
+                author.books.push(isbn);
+                return author;
+            }
+            return author;
+        }
+        return author;
+    });
+    return res.json({book: Database.Book, author: Database.Author});
+});
+
+OurAPP.put("/author/update/:id",(req,res)=>{
+        const {updatedAuthor} = req.body;
+        const {id} = req.params;
+        const author = Database.Author.map((author)=>{
+            if(author.id === parseInt(id)){
+                return {...author,...updatedAuthor};
+            }
+            return author;
+        }); 
+        return res.json(author);
+});
+
+OurAPP.put("/author/updateName/:id",(req,res)=>{
+    const {updatedAuthorName} = req.body;
+    const {id} = req.params;
+    const author = Database.Author.forEach((author)=>{
+        if(author.id === parseInt(id)){
+            author.name = updatedAuthorName.name;
+            return author;
+        }
+        return author;
+    }); 
+    return res.json(Database.Author);
+});
+
+OurAPP.put("/publication/update/:id",(req,res)=>{
+    const {updatedPublication} = req.body;
+    const {id} = req.params;
+    Database.Publication.forEach((pub) => {                       //without const and return
+        if (pub.id == parseInt(id)) {
+            pub.name = updatedPublication.name;
+            pub.books = updatedPublication.books;
+        } 
+    });        
+    return res.json(Database.Publication);
+});
+
+OurAPP.put("/publication/updateBook/:id", (req, res) => {
+
+    const book_ = req.body.books;
+    const {id} = req.params;
+    Database.Publication.map((pub) => {
+        if (pub.id == parseInt(id)) {
+            if (!pub.books.includes(book_)){
+                pub.books.push(book_);
+            }
+        }
+    });
+
+    Database.Book.map((book) => {
+        if (book.ISBN === book_) {
+            book.publication = id;
+        }
+    });
+    res.json({ book: Database.Book, publication: Database.Publication});
+});
+
+OurAPP.delete("/book/delete/:isbn",(req,res)=>{
+    const {isbn} = req.params;
+
+    Database.Book  = Database.Book.filter((book)=> book.ISBN !== isbn); 
+    
+    Database.Author.map((author) => {
+        if (author.books.includes(isbn)) {
+            const idx = author.books.indexOf(isbn);
+            author.books.splice(idx,1); 
+        }
+    });
+
+    Database.Publication.map((pub) => {
+        if (pub.books.includes(isbn)) {
+            const idx = pub.books.indexOf(isbn);
+            pub.books.splice(idx,1); 
+        }
+    });
+
+    return res.json({ book: Database.Book, author: Database.Author, publication: Database.Publication });
+});
+
+OurAPP.delete("/book/delete/author/:isbn/:id",(req,res)=>{
+    const {isbn,id} = req.params;
+    Database.Book.forEach((book)=>{
+        if(book.ISBN === isbn){
+        if(book.authors.includes(parseInt(id))){
+            book.authors = book.authors.filter((ids)=> ids !== parseInt(id)); 
+            return book;
+        }   
+        return book;
+        }
+        return book;
+    });
+
+    Database.Author.forEach((author)=>{
+        if(author.id === parseInt(id)){
+            if(author.books.includes(isbn)){
+                author.books = author.books.filter((str)=> str !== isbn);
+                return author;
+            }
+            return author;
+        }
+        return author;
+    });
+    return res.json({book:Database.Book,author:Database.Author});
+});
+
+OurAPP.delete("/author/delete/:id", (req, res) => {
+    const {id} = req.params;
+
+    Database.Author = Database.Author.filter((author) => {
+        return author.id !== parseInt(id);
+    });
+
+    Database.Book.map((book) => {
+        if (book.authors.includes(parseInt(id))) {
+            const index = book.authors.indexOf(id);
+            book.authors.splice(index, 1);
+        }
+    });
+
+    return res.json({ author: Database.Author, book: Database.Book });
+});
+ 
+OurAPP.delete("/publication/delete/:id", (req, res) => {
+    const {id} = req.params;
+
+    Database.Publication = Database.Publication.filter((pub) => {
+        return pub.id !== parseInt(id);
+    });
+
+    Database.Book.map((book) => {
+        if (book.publication === parseInt(id)) {
+            book.publication = -1;
+        }
+    });
+
+    return res.json({ publication: Database.Publication, book: Database.Book });
+});
+
+OurAPP.delete("/publication/deleteBook/:id/:isbn", (req, res) => {
+    const id = parseInt(req.params.id);
+    const isbn = req.params.isbn;
+
+    Database.Publication.map((pub) => {
+        if (pub.id === id) {
+            if (pub.books.includes(isbn)) {
+                const index = pub.books.indexOf(isbn);
+                pub.books.splice(index, 1);
+            }
+        }
+    });
+
+    Database.Book.map((book) => {
+        if (book.ISBN === isbn) {
+            if (book.publication === id) {
+                book.publication = -1;
+            }
+        }
+    });
+
+    return res.json({ publication: Database.Publication, book: Database.Book })
+});
+
+OurAPP.listen(4000,()=> console.log("server is running!!"));
